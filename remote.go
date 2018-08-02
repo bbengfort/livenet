@@ -20,28 +20,43 @@ type Remote struct {
 	client pb.LiveNetClient      // rpc client specified by protobuf
 	stream pb.LiveNet_PostClient // message stream to send on
 	online bool                  // if the client is connected or not
+	counts *MessageCounts        // keep track of message request traffic
 }
 
 // NewRemote creates a new remote associated with the actor
 func NewRemote(p peers.Peer, a Dispatcher) *Remote {
-	return &Remote{Peer: p, actor: a}
+	return &Remote{Peer: p, actor: a, counts: new(MessageCounts)}
 }
 
 // Send a message to the remote
 func (r *Remote) Send(msg *pb.Envelope) error {
+	// Count the number of send attempts
+	r.counts.Sent()
 
 	// TODO: how to reconcile the multiple threads trying to send/reconnect
 	// the stream with the listener that has better knowledge about the state
 	// of the stream? Right now I'm using RLocks to send on the stream.
 
 	// Does not reconnect if already online uses double-checked lock for safety
-	r.connect()
+	if err := r.connect(); err != nil {
+		// Go offline because of the error
+		caution("could not connect to %s: %s", r.Name, err)
+		r.close()
+		r.counts.Drop()
+
+		// Do not return the error, just stay offline
+		return nil
+	}
 
 	// However, at this point, the recv routine may be closing the connection!
 	if err := r.stream.Send(msg); err != nil {
 		// go offline because of the error
 		caution("dropped message to %s: %s", r.Name, err)
 		r.close()
+		r.counts.Drop()
+
+		// Do not return the error, just stay offline
+		return nil
 	}
 
 	return nil
@@ -63,6 +78,7 @@ func (r *Remote) recv() {
 		}
 
 		// Dispatch the received message event
+		r.counts.Recv()
 		r.actor.DispatchMessage(msg, r)
 	}
 
@@ -89,7 +105,6 @@ func (r *Remote) connect() (err error) {
 
 		r.client = pb.NewLiveNetClient(r.conn)
 		if r.stream, err = r.client.Post(context.Background()); err != nil {
-			r.close() // reset the state of the remote
 			return fmt.Errorf("could not create message stream to '%s': %s", addr, err)
 		}
 
@@ -148,4 +163,15 @@ func (r *Remote) toggleOnline(online bool) {
 	}
 
 	r.online = online
+}
+
+// Status returns a string with information about the remote connection.
+func (r *Remote) Status() string {
+	var status string
+	if r.online {
+		status = "online"
+	} else {
+		status = "offline"
+	}
+	return fmt.Sprintf("%s %s: %s", r.Name, status, r.counts)
 }

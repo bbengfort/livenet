@@ -18,7 +18,22 @@ func (s *Server) Heartbeat() {
 	// Dispatch the heartbeat event
 	s.Dispatch(&event{etype: HeartbeatTimeout, source: nil, value: nil})
 
-	// Sleep for a random interval <= half the tick
-	sleep := rand.Int63n(int64(tick) / 2)
-	time.Sleep(time.Duration(sleep))
+	// Sleep for a random interval <= tick so heartbeat messages are sent in
+	// the random interval (tick, 2tick) to prevent network saturation.
+	sleep := time.Duration(rand.Int63n(int64(tick)))
+	time.Sleep(sleep)
+}
+
+// Status reports the liveness status to the console.
+func (s *Server) Status() {
+	tick, err := s.config.GetTick()
+	if err != nil {
+		return
+	}
+
+	// Schedule the next status event when this event is dispatched
+	defer time.AfterFunc(tick*1000, s.Status)
+
+	// Dispatch the status event
+	s.Dispatch(&event{etype: StatusTimeout, source: nil, value: nil})
 }

@@ -8,12 +8,13 @@ const (
 	MessageEvent
 	TimeoutEvent
 	HeartbeatTimeout
+	StatusTimeout
 )
 
 // Names of event types
 var eventTypeStrings = [...]string{
 	"error", "messageReceived",
-	"timeout", "heartbeatTimeout",
+	"timeout", "heartbeatTimeout", "statusTimeout",
 }
 
 //===========================================================================

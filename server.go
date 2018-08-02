@@ -20,6 +20,7 @@ type Server struct {
 	config  *Config    // Configuration of the service
 	remotes []*Remote  // Remote peers on the network
 	events  chan Event // Event handling channel
+	clients uint64     //  Number of connected clients
 }
 
 // Listen for messages from peers and clients and run the event loop.
@@ -47,8 +48,9 @@ func (s *Server) Listen() error {
 		}
 	}()
 
-	// Send off the heartbeat ticker
+	// Send off the heartbeat and status ticker
 	go s.Heartbeat()
+	go s.Status()
 
 	// Run the event handling loop
 	for event := range s.events {
@@ -85,6 +87,10 @@ func (s *Server) Post(stream pb.LiveNet_PostServer) (err error) {
 		messages uint64
 		envelope *pb.Envelope
 	)
+
+	// Increment the current number of clients and decrement when done
+	s.clients++
+	defer func() { s.clients-- }()
 
 	// Keep receiving messages on the stream until the client disconnects,
 	// send a reply after each message is received and handled by the server.
@@ -160,6 +166,8 @@ func (s *Server) Handle(e Event) error {
 		return e.Value().(error)
 	case HeartbeatTimeout:
 		return s.onHeartbeatTimeout(e)
+	case StatusTimeout:
+		return s.onStatusTimeout(e)
 	case MessageEvent:
 		return s.onMessageEvent(e)
 	default:

@@ -19,7 +19,7 @@ const (
 )
 
 // CautionThreshold for issuing caution logs after accumulating cautions.
-const CautionThreshold = 80
+const CautionThreshold = 50
 
 // These variables are initialized in init()
 var (
