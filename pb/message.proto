@@ -1,0 +1,13 @@
+syntax = "proto3";
+package pb;
+
+enum MessageType {
+    HEARTBEAT = 0;
+}
+
+message Envelope {
+    string sender = 1;      // the unique identity of the host on the network
+    string timestamp = 2;   // the RFC3339 encoded timestamp of the message
+    MessageType type = 3;   // the type of the message serialized in data
+    bytes message = 4;      // the serialized inner message of the type
+}

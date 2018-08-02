@@ -1,0 +1,8 @@
+syntax = "proto3";
+package pb;
+
+import "message.proto";
+
+service LiveNet {
+    rpc Post (stream Envelope) returns (stream Envelope) {}
+}
