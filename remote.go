@@ -97,7 +97,7 @@ func (r *Remote) connect() (err error) {
 		r.Lock()
 		defer r.Unlock()
 
-		addr := r.Endpoint(false)
+		addr := r.Endpoint(true)
 
 		if r.conn, err = grpc.Dial(addr, grpc.WithInsecure()); err != nil {
 			return fmt.Errorf("could not connect to '%s': %s", addr, err)

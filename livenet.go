@@ -11,7 +11,7 @@ import (
 )
 
 // PackageVersion of LiveNet
-const PackageVersion = "0.1"
+const PackageVersion = "0.2"
 
 // Initialize the package and random numbers, etc.
 func init() {
